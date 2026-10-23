@@ -4,4 +4,5 @@ timm
 pillow
 numpy
 huggingface_hub
-gunicorngunicorn
+gunicorn
+gunicorn
