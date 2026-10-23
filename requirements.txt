@@ -5,4 +5,3 @@ pillow
 numpy
 huggingface_hub
 gunicorn
-gunicorn
