@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paddy Doctor | தாவர மருத்துவர்</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Noto Sans Tamil", Arial, sans-serif; margin: 0; background: #f1f6f1; color: #1f2d1f; }
+  header { background: #2e7d32; color: #fff; padding: 18px 24px; }
+  header h1 { margin: 0; font-size: 22px; }
+  main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.1); margin-bottom: 20px; }
+  .upload { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  #preview { max-width: 260px; max-height: 260px; border-radius: 8px; display: none; border: 1px solid #ccc; }
+  button { background: #2e7d32; color: #fff; border: 0; padding: 10px 22px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+  button:disabled { background: #9bb99d; cursor: wait; }
+  #result { display: none; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .cols { grid-template-columns: 1fr; } }
+  .col h2 { margin-top: 0; font-size: 18px; border-bottom: 2px solid #2e7d32; padding-bottom: 6px; }
+  .col h3 { margin: 14px 0 4px; font-size: 15px; color: #2e7d32; }
+  .conf { font-size: 14px; color: #555; margin-bottom: 8px; }
+  .warn { background: #fff3cd; border-left: 4px solid #e0a800; padding: 8px 12px; margin-bottom: 14px; display: none; }
+  small { color: #666; }
+</style>
+</head>
+<body>
+<header><h1>🌿 Plant Doctor &nbsp;|&nbsp; தாவர மருத்துவர்</h1></header>
+<main>
+  <div class="card upload">
+    <div>
+      <input type="file" id="file" accept="image/*"><br><br>
+      <button id="btn">Analyze | ஆய்வு செய்</button>
+    </div>
+    <img id="preview">
+  </div>
+
+  <div class="card" id="result">
+    <div class="warn" id="warn">
+      Low confidence – retake a clear, close-up photo of a single leaf. /
+      நம்பகத்தன்மை குறைவு – ஒரு இலையை தெளிவாக அருகில் எடுத்த படத்தை பதிவேற்றவும்.
+    </div>
+    <div class="cols">
+      <div class="col">
+        <h2>English</h2>
+        <div class="conf" id="conf_en"></div>
+        <h3>Crop</h3><div id="plant_en"></div>
+        <h3>Disease</h3><div id="disease_en"></div>
+        <h3>Cause</h3><div id="cause_en"></div>
+        <h3>Solution</h3><ul id="fix_en"></ul>
+      </div>
+      <div class="col">
+        <h2>தமிழ்</h2>
+        <div class="conf" id="conf_ta"></div>
+        <h3>பயிர்</h3><div id="plant_ta"></div>
+        <h3>நோய்</h3><div id="disease_ta"></div>
+        <h3>காரணம்</h3><div id="cause_ta"></div>
+        <h3>தீர்வு</h3><ul id="fix_ta"></ul>
+      </div>
+    </div>
+    <hr>
+    <small id="raw"></small><br>
+    <small>Advisory only. Confirm with your local agriculture officer before spraying. / ஆலோசனை மட்டுமே; மருந்து தெளிக்கும் முன் வேளாண் அலுவலரை அணுகவும்.</small>
+  </div>
+</main>
+
+<script>
+const file = document.getElementById("file");
+const btn = document.getElementById("btn");
+const preview = document.getElementById("preview");
+
+file.onchange = () => {
+  if (!file.files[0]) return;
+  preview.src = URL.createObjectURL(file.files[0]);
+  preview.style.display = "block";
+};
+
+btn.onclick = async () => {
+  if (!file.files[0]) { alert("Choose an image first / முதலில் படத்தைத் தேர்ந்தெடுக்கவும்"); return; }
+  btn.disabled = true;
+  const fd = new FormData();
+  fd.append("image", file.files[0]);
+  const r = await fetch("/predict", { method: "POST", body: fd });
+  const d = await r.json();
+  btn.disabled = false;
+
+  const set = (id, v) => document.getElementById(id).textContent = v;
+  ["en", "ta"].forEach(l => {
+    set("plant_" + l, d["plant_" + l]);
+    set("disease_" + l, d["disease_" + l]);
+    set("cause_" + l, d["cause_" + l]);
+    const ul = document.getElementById("fix_" + l);
+    ul.innerHTML = "";
+    d["fix_" + l].forEach(t => { const li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
+  });
+  set("conf_en", "Confidence: " + d.confidence + "%");
+  set("conf_ta", "நம்பகத்தன்மை: " + d.confidence + "%");
+  set("raw", "Model output: " + d.top3.map(p => p.label + " (" + p.score + "%)").join(" | "));
+  document.getElementById("warn").style.display = d.confidence < 60 ? "block" : "none";
+  document.getElementById("result").style.display = "block";
+};
+</script>
+</body>
+</html>
